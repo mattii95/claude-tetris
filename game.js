@@ -39,6 +39,22 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const themeSwitch = document.getElementById('theme-switch');
+const themeText = document.getElementById('theme-text');
+
+let gridColor, highlightColor;
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const style = getComputedStyle(document.documentElement);
+  gridColor = style.getPropertyValue('--grid').trim();
+  highlightColor = style.getPropertyValue('--highlight').trim();
+  const isLight = theme === 'light';
+  themeSwitch.setAttribute('aria-checked', String(isLight));
+  themeText.textContent = isLight ? 'Claro' : 'Oscuro';
+  // El loop no redibuja en pausa / game over
+  if (current && next) { draw(); drawNext(); }
+}
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
@@ -163,13 +179,13 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   context.fillStyle = color;
   context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
   // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
+  context.fillStyle = highlightColor;
   context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
   context.globalAlpha = 1;
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = gridColor;
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -301,4 +317,15 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
+// El switch solo funciona con el mouse: no toma foco ni responde al teclado
+themeSwitch.addEventListener('mousedown', e => e.preventDefault());
+themeSwitch.addEventListener('keydown', e => e.preventDefault());
+themeSwitch.addEventListener('click', e => {
+  if (e.detail === 0) return; // activación por teclado (Enter/Space)
+  const theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  try { localStorage.setItem('theme', theme); } catch (err) {}
+  applyTheme(theme);
+});
+
+applyTheme(document.documentElement.dataset.theme || 'dark');
 init();

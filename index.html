@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tetris Dev</title>
+  <script>
+    // Aplica el tema antes del primer render (evita parpadeo)
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('theme'); } catch (e) {}
+      if (t !== 'light' && t !== 'dark') {
+        t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -30,6 +41,14 @@
         <div class="panel-section">
           <span class="label">NEXT</span>
           <canvas id="next-canvas" width="120" height="120"></canvas>
+        </div>
+
+        <div class="panel-section">
+          <span class="label">TEMA</span>
+          <button id="theme-switch" class="theme-switch" type="button" role="switch" aria-checked="false" aria-label="Tema claro" tabindex="-1">
+            <span class="track"><span class="thumb"></span></span>
+            <span id="theme-text">Oscuro</span>
+          </button>
         </div>
 
         <div class="panel-section controls">
