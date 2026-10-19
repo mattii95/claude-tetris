@@ -1,0 +1,50 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude issue triage
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Analizá el issue #${{ github.event.issue.number }} del repo ${{ github.repository }}
+            (Tetris en JS vanilla; leé CLAUDE.md para la arquitectura).
+
+            1. `gh issue view <n>` para leer título y cuerpo.
+            2. `gh label list` y elegí SOLO labels existentes que apliquen
+               (tipo: bug/enhancement/documentation/question, etc.).
+               Aplicalos con `gh issue edit <n> --add-label "a,b"`.
+            3. Investigá el código (Read/Glob/Grep) y escribí un diagnóstico en español:
+               ## 🔍 Diagnóstico
+               - **Resumen** del problema/pedido
+               - **Causa probable** / qué falta
+               - **Archivos y funciones involucradas** (ruta:línea)
+               - **Enfoque de solución sugerido** (pasos, sin escribir el código completo)
+               - **Riesgos / dudas abiertas**
+            4. Publicalo con `gh issue comment <n> --edit-last --create-if-none --body-file <archivo>`
+               para que al editar el issue se actualice el mismo comentario en vez de duplicarlo.
+            No modifiques archivos del repo ni abras PRs.
+          claude_args: |
+            --allowedTools "Read,Glob,Grep,Write,Bash(gh issue view:*),Bash(gh label list:*),Bash(gh issue edit:*),Bash(gh issue comment:*)"
