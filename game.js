@@ -43,6 +43,7 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeSwitch = document.getElementById('theme-switch');
 const themeText = document.getElementById('theme-text');
+const skinBtns = document.querySelectorAll('#skin-group button');
 
 let gridColor, highlightColor;
 
@@ -177,15 +178,67 @@ function updateHUD() {
   levelEl.textContent = level;
 }
 
+// Cada skin: {colors, drawBlock(context, px, py, s, color)} con px/py/s en píxeles
+const SKINS = {
+  retro: {
+    colors: COLORS,
+    drawBlock(g, px, py, s, color) {
+      g.fillStyle = color;
+      g.fillRect(px + 1, py + 1, s - 2, s - 2);
+      g.fillStyle = highlightColor;
+      g.fillRect(px + 1, py + 1, s - 2, 4);
+    },
+  },
+  neon: {
+    colors: [null, '#00f0ff', '#fff700', '#d400ff', '#39ff14', '#ff073a', '#2979ff', '#ff9100', '#ff2bd6'],
+    drawBlock(g, px, py, s, color) {
+      g.shadowColor = color;
+      g.shadowBlur = 12;
+      g.fillStyle = color;
+      g.fillRect(px + 3, py + 3, s - 6, s - 6);
+      g.shadowBlur = 0;
+    },
+  },
+  pastel: {
+    colors: [null, '#a8e6ef', '#fff1b8', '#dcc1ec', '#c5eac7', '#f5b7b7', '#b9d9f7', '#fcd9ae', '#f8bbd0'],
+    drawBlock(g, px, py, s, color) {
+      g.fillStyle = color;
+      g.beginPath();
+      g.roundRect(px + 1, py + 1, s - 2, s - 2, 8);
+      g.fill();
+    },
+  },
+  pixel: {
+    colors: COLORS,
+    drawBlock(g, px, py, s, color) {
+      g.fillStyle = color;
+      g.fillRect(px + 1, py + 1, s - 2, s - 2);
+      // textura: damero de "píxeles" claros/oscuros
+      const t = (s - 2) / 4;
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+          if ((i + j) % 2) continue;
+          g.fillStyle = i < 2 ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)';
+          g.fillRect(px + 1 + i * t, py + 1 + j * t, t, t);
+        }
+      }
+    },
+  },
+};
+
+let skin = SKINS.retro;
+
+function applySkin(name) {
+  skin = SKINS[name];
+  document.documentElement.dataset.skin = name;
+  skinBtns.forEach(b => b.setAttribute('aria-checked', String(b.dataset.skin === name)));
+  if (current && next) { draw(); drawNext(); }
+}
+
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
   context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = highlightColor;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  skin.drawBlock(context, x * size, y * size, size, skin.colors[colorIndex]);
   context.globalAlpha = 1;
 }
 
@@ -332,5 +385,19 @@ themeSwitch.addEventListener('click', e => {
   applyTheme(theme);
 });
 
+// Los botones de skin solo funcionan con el mouse (no roban el teclado del juego)
+skinBtns.forEach(b => {
+  b.addEventListener('mousedown', e => e.preventDefault());
+  b.addEventListener('keydown', e => e.preventDefault());
+  b.addEventListener('click', e => {
+    if (e.detail === 0) return;
+    try { localStorage.setItem('skin', b.dataset.skin); } catch (err) {}
+    applySkin(b.dataset.skin);
+  });
+});
+
 applyTheme(document.documentElement.dataset.theme || 'dark');
+let savedSkin = null;
+try { savedSkin = localStorage.getItem('skin'); } catch (e) {}
+applySkin(Object.hasOwn(SKINS, savedSkin) ? savedSkin : 'retro');
 init();

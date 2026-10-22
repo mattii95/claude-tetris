@@ -43,6 +43,7 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 - **Tema claro / oscuro** con un switch en el panel lateral (solo con el mouse). Por defecto sigue el tema del sistema operativo; la elección del usuario se guarda en `localStorage`.
+- **Skins** (Retro / Neon / Pastel / Pixel) con selector en el panel lateral (solo con el mouse); la elección se guarda en `localStorage`.
 
 ---
 
