@@ -41,6 +41,11 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const nameForm = document.getElementById('name-form');
+const nameInput = document.getElementById('name-input');
+const recordsList = document.getElementById('records-list');
+const recordsExtra = document.getElementById('records-extra');
+const resetBtn = document.getElementById('reset-btn');
 const themeSwitch = document.getElementById('theme-switch');
 const themeText = document.getElementById('theme-text');
 
@@ -56,6 +61,39 @@ function applyTheme(theme) {
   themeText.textContent = isLight ? 'Claro' : 'Oscuro';
   // El loop no redibuja en pausa / game over
   if (current && next) { draw(); drawNext(); }
+}
+
+let combo = 0;
+let pendingRank = -1;
+let records = loadRecords();
+
+function loadRecords() {
+  const r = { top: [], bestCombo: 0, maxLines: 0 };
+  try {
+    const d = JSON.parse(localStorage.getItem('records'));
+    if (Array.isArray(d.top)) {
+      r.top = d.top
+        .filter(e => e && typeof e.name === 'string' && Number.isFinite(e.score) && Number.isFinite(e.lines))
+        .slice(0, 5);
+    }
+    if (Number.isFinite(d.bestCombo)) r.bestCombo = d.bestCombo;
+    if (Number.isFinite(d.maxLines)) r.maxLines = d.maxLines;
+  } catch (err) {}
+  return r;
+}
+
+function saveRecords() {
+  try { localStorage.setItem('records', JSON.stringify(records)); } catch (err) {}
+}
+
+function renderRecords(highlight = -1) {
+  recordsList.replaceChildren(...records.top.map((e, i) => {
+    const li = document.createElement('li');
+    if (i === highlight) li.className = 'me';
+    li.textContent = `${i + 1}. ${e.name} — ${e.score.toLocaleString()} (${e.lines}L)`;
+    return li;
+  }));
+  recordsExtra.textContent = `Mejor combo: ${records.bestCombo} · Máx. líneas: ${records.maxLines}`;
 }
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
@@ -124,7 +162,9 @@ function clearLines() {
       r++;
     }
   }
+  combo = cleared ? combo + 1 : 0;
   if (cleared) {
+    records.bestCombo = Math.max(records.bestCombo, combo);
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
@@ -244,7 +284,17 @@ function endGame() {
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  restartBtn.textContent = 'Reiniciar';
+  records.maxLines = Math.max(records.maxLines, lines);
+  const rank = records.top.findIndex(e => score > e.score);
+  pendingRank = rank >= 0 ? rank : records.top.length < 5 ? records.top.length : -1;
+  if (score <= 0) pendingRank = -1;
+  saveRecords();
+  nameForm.classList.toggle('hidden', pendingRank < 0);
+  nameInput.value = '';
+  renderRecords();
   overlay.classList.remove('hidden');
+  if (pendingRank >= 0) nameInput.focus();
 }
 
 function togglePause() {
@@ -286,6 +336,11 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  combo = 0;
+  nameForm.classList.add('hidden');
+  recordsList.replaceChildren();
+  recordsExtra.textContent = '';
+  overlayScore.textContent = '';
   lastTime = performance.now();
   next = randomPiece();
   spawn();
@@ -296,6 +351,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (e.target === nameInput) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -322,6 +378,25 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
+nameForm.addEventListener('submit', e => {
+  e.preventDefault();
+  if (pendingRank < 0) return;
+  records.top.splice(pendingRank, 0, { name: nameInput.value.trim() || 'Anónimo', score, lines });
+  records.top.length = Math.min(records.top.length, 5);
+  saveRecords();
+  renderRecords(pendingRank);
+  pendingRank = -1;
+  nameForm.classList.add('hidden');
+});
+
+resetBtn.addEventListener('click', () => {
+  records = { top: [], bestCombo: 0, maxLines: 0 };
+  pendingRank = -1;
+  nameForm.classList.add('hidden');
+  saveRecords();
+  renderRecords();
+});
+
 // El switch solo funciona con el mouse: no toma foco ni responde al teclado
 themeSwitch.addEventListener('mousedown', e => e.preventDefault());
 themeSwitch.addEventListener('keydown', e => e.preventDefault());
@@ -333,4 +408,7 @@ themeSwitch.addEventListener('click', e => {
 });
 
 applyTheme(document.documentElement.dataset.theme || 'dark');
-init();
+// Pantalla de inicio: el juego arranca con "Jugar" (restart-btn)
+gameOver = true;
+overlayScore.textContent = '';
+renderRecords();

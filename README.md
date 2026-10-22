@@ -185,3 +185,7 @@ Algunos parámetros fáciles de tunear en `game.js`:
 ## Licencia
 
 Proyecto de uso libre con fines educativos y de práctica.
+
+## Records
+
+El top 5 (nombre, puntos, líneas), el mejor combo y las líneas máximas se guardan en `localStorage`. Se muestran en la pantalla de inicio y en el game over (fila actual resaltada y campo de nombre). El botón "Borrar records" los reinicia.
