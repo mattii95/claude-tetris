@@ -204,7 +204,7 @@ const SKINS = {
     drawBlock(g, px, py, s, color) {
       g.fillStyle = color;
       g.beginPath();
-      g.roundRect(px + 1, py + 1, s - 2, s - 2, 8);
+      (g.roundRect || g.rect).call(g, px + 1, py + 1, s - 2, s - 2, s / 4);
       g.fill();
     },
   },
