@@ -41,6 +41,11 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const pauseOnly = document.querySelectorAll('.pause-only');
+const resumeBtn = document.getElementById('resume-btn');
+const controlsBtn = document.getElementById('controls-btn');
+const controlsList = document.getElementById('controls-list');
+const startLevelSel = document.getElementById('start-level');
 const themeSwitch = document.getElementById('theme-switch');
 const themeText = document.getElementById('theme-text');
 
@@ -58,6 +63,7 @@ function applyTheme(theme) {
   if (current && next) { draw(); drawNext(); }
 }
 
+let startLevel = 1, gameStartLevel = 1;
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
 function createBoard() {
@@ -127,7 +133,7 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
+    level = gameStartLevel + Math.floor(lines / 10);
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
@@ -244,6 +250,7 @@ function endGame() {
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  pauseOnly.forEach(el => el.classList.add('hidden'));
   overlay.classList.remove('hidden');
 }
 
@@ -251,12 +258,16 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    overlay.classList.add('hidden');
+    document.activeElement.blur();
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
+    pauseOnly.forEach(el => el.classList.remove('hidden'));
+    controlsList.classList.add('hidden');
     overlay.classList.remove('hidden');
   }
 }
@@ -281,10 +292,12 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = gameStartLevel = startLevel;
+  controlsList.classList.add('hidden');
+  document.activeElement.blur();
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -296,8 +309,8 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
+  if (paused || gameOver) return; // menú abierto: solo P/Escape
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -321,6 +334,14 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+resumeBtn.addEventListener('click', togglePause);
+controlsBtn.addEventListener('click', () => controlsList.classList.toggle('hidden'));
+try { startLevel = Math.min(10, Math.max(1, parseInt(localStorage.getItem('startLevel'), 10) || 1)); } catch (err) {}
+startLevelSel.value = startLevel;
+startLevelSel.addEventListener('change', () => {
+  startLevel = +startLevelSel.value;
+  try { localStorage.setItem('startLevel', startLevel); } catch (err) {}
+});
 
 // El switch solo funciona con el mouse: no toma foco ni responde al teclado
 themeSwitch.addEventListener('mousedown', e => e.preventDefault());
